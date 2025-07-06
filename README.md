@@ -1,5 +1,7 @@
 # 📚 StudyTube
 
+![License](https://img.shields.io/badge/license-MIT-blue.svg)
+
 **StudyTube** is a distraction-free, YouTube-powered study platform built for focused learning.
 
 🚫 No recommendations  
@@ -16,8 +18,9 @@
 - 📂 Save YouTube playlists to your Library
 - 🧠 Create custom playlists and organize them your way
 - 🖥️ Watch with a clean, minimal player — no distractions
-- 💾 Data saved locally (no account needed)
-- 🔐 .env protected & API key secure
+- 💾 All data saved locally in your browser
+- 📦 Built with Vite, React, Tailwind
+- 🔐 API key secured via `.env`
 
 ---
 
@@ -28,3 +31,4 @@ git clone https://github.com/Anish-Prime/StudyTube.git
 cd StudyTube
 npm install
 npm run dev
+```
