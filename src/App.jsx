@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Routes, Route } from 'react-router-dom';
+import { Routes, Route, useNavigate } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
 import VideoCard from './components/VideoCard';
 import PlaylistView from './components/PlaylistView';
@@ -7,7 +7,6 @@ import { fetchYouTubeVideos, fetchPlaylistVideos } from './youtube';
 import AddToPlaylistModal from './components/AddToPlaylistModal';
 import LibraryPage from './pages/LibraryPage';
 import Layout from './components/Layout';
-import { useNavigate } from 'react-router-dom';
 
 function App() {
   const [videos, setVideos] = useState([]);
@@ -20,22 +19,18 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const navigate = useNavigate();
+
   const handleWatch = (video) => {
     setSelectedVideo(video);
     navigate('/');
   };
-
 
   useEffect(() => {
     try {
       const savedPlaylist = JSON.parse(localStorage.getItem('studyTubePlaylist'));
       const savedLibrary = JSON.parse(localStorage.getItem('studyTubeLibrary'));
 
-      if (Array.isArray(savedPlaylist)) {
-        setPlaylist(savedPlaylist);
-      }
-
-      // ✅ Only set library if it's empty
+      if (Array.isArray(savedPlaylist)) setPlaylist(savedPlaylist);
       if (Array.isArray(savedLibrary) && savedLibrary.length > 0 && library.length === 0) {
         setLibrary(savedLibrary);
       }
@@ -44,7 +39,6 @@ function App() {
     }
   }, []);
 
-  // Save to localStorage
   useEffect(() => {
     localStorage.setItem('studyTubePlaylist', JSON.stringify(playlist));
   }, [playlist]);
@@ -129,12 +123,19 @@ function App() {
     if (playlist.type === 'youtube' && playlist.videos === null) {
       const fetched = await fetchPlaylistVideos(playlist.id);
 
-      const updatedLibrary = library.map((p) =>
-        p.id === playlist.id ? { ...p, videos: fetched } : p
+      // Add default watched/revisit status
+      const enhanced = fetched.map((video) => ({
+        ...video,
+        watched: false,
+        revisit: false,
+      }));
+
+      const updated = library.map((p) =>
+        p.id === playlist.id ? { ...p, videos: enhanced } : p
       );
 
-      setLibrary(updatedLibrary); // 💾 Update the actual saved library
-      setActivePlaylist({ ...playlist, videos: fetched });
+      setLibrary(updated);
+      setActivePlaylist({ ...playlist, videos: enhanced });
     } else {
       setActivePlaylist(playlist);
     }
