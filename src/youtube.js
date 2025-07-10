@@ -1,26 +1,43 @@
 const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
 
-export async function fetchPlaylistVideos(playlistId) {
-  const url = `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`;
+// youtube.js
+
+export const fetchPlaylistVideos = async (playlistId) => {
+  const API_KEY = import.meta.env.VITE_YOUTUBE_API_KEY;
+  const maxResults = 50;
+  const allVideos = [];
+  let nextPageToken = '';
 
   try {
-    const response = await fetch(url);
-    const data = await response.json();
+    do {
+      const url = `https://www.googleapis.com/youtube/v3/playlistItems?key=${API_KEY}&playlistId=${playlistId}&part=snippet&maxResults=${maxResults}&pageToken=${nextPageToken}`;
 
-    const videos = data.items.map((item) => ({
-      videoId: item.snippet.resourceId.videoId,
-      title: item.snippet.title,
-      channel: item.snippet.videoOwnerChannelTitle || '',
-      thumbnail: item.snippet.thumbnails?.medium?.url || '',
-      type: 'video',
-    }));
+      const res = await fetch(url);
+      const data = await res.json();
 
-    return videos;
-  } catch (error) {
-    console.error('Error fetching playlist items:', error);
+      if (data.items) {
+        const videos = data.items.map((item) => ({
+          videoId: item.snippet.resourceId.videoId,
+          title: item.snippet.title,
+          channel: item.snippet.videoOwnerChannelTitle || item.snippet.channelTitle,
+          thumbnail: item.snippet.thumbnails?.medium?.url || '',
+          watched: false,
+          revisit: false,
+        }));
+
+        allVideos.push(...videos);
+      }
+
+      nextPageToken = data.nextPageToken || '';
+
+    } while (nextPageToken);
+
+    return allVideos;
+  } catch (err) {
+    console.error('Failed to fetch playlist videos:', err);
     return [];
   }
-}
+};
 
 export async function fetchYouTubeVideos(query) {
   const searchUrl = `https://www.googleapis.com/youtube/v3/search?part=snippet&type=video,playlist&q=${encodeURIComponent(

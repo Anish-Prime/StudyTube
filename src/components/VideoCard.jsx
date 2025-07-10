@@ -14,8 +14,8 @@ const VideoCard = ({
   const isPlaylist = video.type === 'playlist';
 
   const getCardStyles = () => {
-    if (video.revisit) return 'bg-yellow-100 border border-yellow-300';
-    if (video.watched) return 'bg-green-100 border border-green-300';
+    if (video.revisit) return 'bg-yellow-200 border border-yellow-500';
+    if (video.watched) return 'bg-green-300 border border-green-600';
     return 'bg-white';
   };
 

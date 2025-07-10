@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { Routes, Route, useNavigate } from 'react-router-dom';
 import SearchBar from './components/SearchBar';
 import VideoCard from './components/VideoCard';
-import PlaylistView from './components/PlaylistView';
 import { fetchYouTubeVideos, fetchPlaylistVideos } from './youtube';
 import AddToPlaylistModal from './components/AddToPlaylistModal';
 import LibraryPage from './pages/LibraryPage';
@@ -10,7 +9,6 @@ import Layout from './components/Layout';
 
 function App() {
   const [videos, setVideos] = useState([]);
-  const [playlist, setPlaylist] = useState([]);
   const [library, setLibrary] = useState([]);
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [activePlaylist, setActivePlaylist] = useState(null);
@@ -18,6 +16,7 @@ function App() {
   const [modalVideo, setModalVideo] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [hasLoadedLibrary, setHasLoadedLibrary] = useState(false);
   const navigate = useNavigate();
 
   const handleWatch = (video) => {
@@ -25,27 +24,26 @@ function App() {
     navigate('/');
   };
 
+  // ✅ Load from localStorage
   useEffect(() => {
     try {
-      const savedPlaylist = JSON.parse(localStorage.getItem('studyTubePlaylist'));
       const savedLibrary = JSON.parse(localStorage.getItem('studyTubeLibrary'));
-
-      if (Array.isArray(savedPlaylist)) setPlaylist(savedPlaylist);
-      if (Array.isArray(savedLibrary) && savedLibrary.length > 0 && library.length === 0) {
+      if (Array.isArray(savedLibrary)) {
         setLibrary(savedLibrary);
       }
     } catch (e) {
-      console.error("LocalStorage load failed:", e);
+      console.error('LocalStorage load failed:', e);
+    } finally {
+      setHasLoadedLibrary(true);
     }
   }, []);
 
+  // ✅ Save to localStorage only after initial load
   useEffect(() => {
-    localStorage.setItem('studyTubePlaylist', JSON.stringify(playlist));
-  }, [playlist]);
-
-  useEffect(() => {
-    localStorage.setItem('studyTubeLibrary', JSON.stringify(library));
-  }, [library]);
+    if (hasLoadedLibrary) {
+      localStorage.setItem('studyTubeLibrary', JSON.stringify(library));
+    }
+  }, [library, hasLoadedLibrary]);
 
   const handleSearch = async (query) => {
     setLoading(true);
@@ -61,18 +59,8 @@ function App() {
     }
   };
 
-  const addToPlaylist = (video) => {
-    if (!playlist.find((v) => v.videoId === video.videoId)) {
-      setPlaylist((prev) => [...prev, video]);
-    }
-  };
-
-  const removeFromPlaylist = (videoId) => {
-    setPlaylist((prev) => prev.filter((v) => v.videoId !== videoId));
-  };
-
   const handleCreatePlaylist = () => {
-    const name = prompt("Enter playlist name:");
+    const name = prompt('Enter playlist name:');
     if (!name) return;
 
     const newPlaylist = {
@@ -105,7 +93,9 @@ function App() {
   };
 
   const handleAddPlaylistToLibrary = (playlist) => {
-    const exists = library.some((p) => p.id === playlist.playlistId && p.type === 'youtube');
+    const exists = library.some(
+      (p) => p.id === playlist.playlistId && p.type === 'youtube'
+    );
     if (exists) return;
 
     setLibrary((prev) => [
@@ -123,7 +113,6 @@ function App() {
     if (playlist.type === 'youtube' && playlist.videos === null) {
       const fetched = await fetchPlaylistVideos(playlist.id);
 
-      // Add default watched/revisit status
       const enhanced = fetched.map((video) => ({
         ...video,
         watched: false,
@@ -143,7 +132,14 @@ function App() {
 
   return (
     <Routes>
-      <Route element={<Layout selectedVideo={selectedVideo} setSelectedVideo={setSelectedVideo} />}>
+      <Route
+        element={
+          <Layout
+            selectedVideo={selectedVideo}
+            setSelectedVideo={setSelectedVideo}
+          />
+        }
+      >
         <Route
           path="/"
           element={
@@ -157,8 +153,14 @@ function App() {
 
               <SearchBar onSearch={handleSearch} />
 
-              {loading && <p className="text-center text-blue-500 mt-4">Searching for videos...</p>}
-              {error && <p className="text-center text-red-500 mt-4">{error}</p>}
+              {loading && (
+                <p className="text-center text-blue-500 mt-4">
+                  Searching for videos...
+                </p>
+              )}
+              {error && (
+                <p className="text-center text-red-500 mt-4">{error}</p>
+              )}
 
               <div className="flex flex-col items-center mt-12 mb-4">
                 {videos.map((video) => (
@@ -171,47 +173,12 @@ function App() {
                 ))}
               </div>
 
-              {selectedVideo && (
-                <div className="mt-10 w-full flex flex-col items-center px-4">
-                  <h3 className="text-xl font-semibold text-center mb-4 text-gray-800">
-                    🎥 {selectedVideo.title}
-                  </h3>
-
-                  <div className="w-full max-w-4xl">
-                    <iframe
-                      src={`https://www.youtube.com/embed/${selectedVideo.videoId}?rel=0`}
-                      title={selectedVideo.title}
-                      frameBorder="0"
-                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                      allowFullScreen
-                      className="rounded-lg shadow-lg w-full"
-                      style={{
-                        minHeight: '220px',
-                        height: '60vh',
-                        maxHeight: '70vh',
-                      }}
-                    ></iframe>
-                  </div>
-
-                  <button
-                    onClick={() => setSelectedVideo(null)}
-                    className="mt-4 bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700"
-                  >
-                    ✖ Close
-                  </button>
-                </div>
-              )}
-
-              <PlaylistView
-                playlist={playlist}
-                onWatch={handleWatch}
-                onRemove={removeFromPlaylist}
-              />
-
               {showModal && (
                 <div className="fixed inset-0 z-50">
                   <AddToPlaylistModal
-                    customPlaylists={library.filter((p) => p.type === 'custom')}
+                    customPlaylists={library.filter(
+                      (p) => p.type === 'custom'
+                    )}
                     video={modalVideo}
                     onAdd={handleAddToCustomPlaylist}
                     onClose={() => setShowModal(false)}
@@ -230,12 +197,20 @@ function App() {
               setLibrary={setLibrary}
               activePlaylist={activePlaylist}
               setActivePlaylist={setActivePlaylist}
-              onDelete={(id) => {
-                setLibrary((prev) => prev.filter((p) => p.id !== id));
-              }}
+              onDelete={(id) =>
+                setLibrary((prev) => prev.filter((p) => p.id !== id))
+              }
               onView={handleViewPlaylist}
               onBack={() => setActivePlaylist(null)}
               onWatch={handleWatch}
+              onRename={(id) => {
+                const newName = prompt('Enter new playlist name:');
+                if (!newName) return;
+                const updated = library.map((p) =>
+                  p.id === id ? { ...p, name: newName } : p
+                );
+                setLibrary(updated);
+              }}
             />
           }
         />
